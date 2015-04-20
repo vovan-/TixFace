@@ -5,6 +5,19 @@ using Toybox.Lang as Lang;
 
 class TixFaceView extends Ui.WatchFace {
 
+	var state = 0;
+	var numHr0;
+	var numHr1;
+
+	
+	var numMin0;
+	var numMin1;
+
+	var hr0Bitfield;
+	var hr1Bitfield;
+	var min0Bitfield;
+	var min1Bitfield;
+
     //! Load your resources here
     function onLayout(dc) {
         setLayout(Rez.Layouts.WatchFace(dc));
@@ -16,18 +29,7 @@ class TixFaceView extends Ui.WatchFace {
 
     //! Update the view
     function onUpdate(dc) {
-        // Call the parent onUpdate function to redraw the layout
-//        View.onUpdate(dc);
-
-        // Get and show the current time
-        var clockTime = Sys.getClockTime();
-        
-		// Clear the screen
-        dc.setColor(Gfx.COLOR_BLACK, Gfx.COLOR_WHITE);
-        dc.fillRectangle(0,0,dc.getWidth(), dc.getHeight());
-        //tix.draw(dc);
-
-		drawTix(dc, updateTix(clockTime));
+		updateTix(dc, Sys.getClockTime());
     }
 
     //! The user has just looked at their watch. Timers and animations may be started here.
@@ -39,63 +41,84 @@ class TixFaceView extends Ui.WatchFace {
     }
     
     //Based on each digit, grab associated .bmp file (randomly) on a timed interval.
-	function updateTix(clockTime) {
+	function updateTix(dc, clockTime) {
 		
 		//Determine how many dots are lit for each field.
-		var numHr0 = clockTime.hour >= 10 ? clockTime.hour >= 20 ? 2 : 1 : 0;
-		var numHr1 = clockTime.hour < 10 ? clockTime.hour : clockTime.hour - numHr0 * 10;
-
-		
-		var numMin0 = clockTime.min >= 10 ? clockTime.min >= 20 ? clockTime.min >= 30 ? clockTime.min >= 40 ? clockTime.min >= 50 ? 5 : 4 : 3 : 2 : 1 : 0;
-		var numMin1 = clockTime.min < 10 ? clockTime.min : clockTime.min - numMin0 * 10;
-
-		var hr0Bitfield = 0;
-		var hr1Bitfield = 0;
-		var min0Bitfield = 0;
-		var min1Bitfield = 0;
 		var i;
 		var rand;
 
-
-		//Loop hour0
-		for( i = 0; i < numHr0; i++){
+		if(state == 0){
+			numHr0 = clockTime.hour >= 10 ? clockTime.hour >= 20 ? 2 : 1 : 0;
+			hr0Bitfield = 0;
+			//Loop hour0
+			for( i = 0; i < numHr0; i++){
 			//Random, key it, and draw it.
-			rand = Math.rand() % 3;
-			while(hr0Bitfield & (1 << rand)){
 				rand = Math.rand() % 3;
-			}
+				while(hr0Bitfield & (1 << rand)){
+				rand = Math.rand() % 3;
+				}
 			hr0Bitfield |= (1 << rand);
-	    }
+	    	}
+	    	//set next state
+			state = 1;
+		}
 
-		//Loop hour1
-		for( i = 0; i < numHr1; i++){
-			rand = Math.rand() % 9;
-			while(hr1Bitfield & (1 << rand)){
+		else if(state == 1){
+			numHr1 = clockTime.hour < 10 ? clockTime.hour : clockTime.hour - numHr0 * 10;
+			hr1Bitfield = 0;
+			//Loop hour1
+			for( i = 0; i < numHr1; i++){
 				rand = Math.rand() % 9;
+				while(hr1Bitfield & (1 << rand)){
+					rand = Math.rand() % 9;
+				}
+	     		hr1Bitfield |= (1 << rand);
 			}
-     		hr1Bitfield |= (1 << rand);
+			//set next state
+			state = 2;
 		}
 		
-		//Loop min0
-		for( i = 0; i < numMin0; i++){
-			rand = Math.rand() % 6;
-			while(min0Bitfield & (1 << rand)){
+		else if(state == 2){
+			numMin0 = clockTime.min >= 10 ? clockTime.min >= 20 ? clockTime.min >= 30 ? clockTime.min >= 40 ? clockTime.min >= 50 ? 5 : 4 : 3 : 2 : 1 : 0;
+			min0Bitfield = 0;
+			//Loop min0
+			for( i = 0; i < numMin0; i++){
 				rand = Math.rand() % 6;
+				while(min0Bitfield & (1 << rand)){
+					rand = Math.rand() % 6;
+				}
+				min0Bitfield |= (1 << rand);
 			}
-			min0Bitfield |= (1 << rand);
+			//set next state
+			state = 3;
 		}
 		
-		//Loop min1
-		for( i = 0; i < numMin1; i++){
-			rand = Math.rand() % 9;
-			while(min1Bitfield & (1 << rand)){
+		else if(state == 3){
+			numMin1 = clockTime.min < 10 ? clockTime.min : clockTime.min - numMin0 * 10;
+			min1Bitfield = 0;
+			//Loop min1
+			for( i = 0; i < numMin1; i++){
 				rand = Math.rand() % 9;
+				while(min1Bitfield & (1 << rand)){
+					rand = Math.rand() % 9;
+				}
+				min1Bitfield |= (1 << rand);
 			}
-			min1Bitfield |= (1 << rand);
+			//set next state
+			state = 4;
 		}
 		
-		//Return array of randomized blocks to illuminate.
-		return [hr0Bitfield, hr1Bitfield, min0Bitfield, min1Bitfield];
+		else if(state == 4){
+			// Clear the screen
+       		dc.setColor(Gfx.COLOR_BLACK, Gfx.COLOR_WHITE);
+        	dc.fillRectangle(0,0,dc.getWidth(), dc.getHeight());
+        	//tix.draw(dc);
+
+			drawTix(dc, [hr0Bitfield, hr1Bitfield, min0Bitfield, min1Bitfield]);
+			
+			//set next state
+			state = 0;
+		}
 	}
 	
 	function drawTix(dc, arrbf) {
